@@ -1,17 +1,31 @@
-export function isPinterestUrl(text) {
-  try {
-    const url = new URL(text);
-    return (
-      url.hostname === "pinterest.com" ||
-      url.hostname.endsWith(".pinterest.com") ||
-      url.hostname === "pin.it"
-    );
-  } catch {
-    return false;
+import {
+  isPinterestUrl,
+  downloadPinterest
+} from "../services/pinterest.js";
+export async function pinterest(sock, message, args) {
+  const jid = message.key.remoteJid;
+  const url = args[0];
+  if (!url || !isPinterestUrl(url)) {
+    await sock.sendMessage(jid, {
+      text: "Envíame un enlace válido de Pinterest. ✦"
+    });
+    return;
   }
-}
-export async function downloadPinterest() {
-  throw new Error(
-    "El servicio de Pinterest todavía no está configurado."
-  );
+  await sock.sendMessage(jid, {
+    text: "Estoy revisando el Pin... ✦"
+  });
+  try {
+    const result = await downloadPinterest(url);
+    if (!result) {
+      throw new Error("Sin resultado");
+    }
+    await sock.sendMessage(jid, {
+      text: "Listo. ✦"
+    });
+  } catch (error) {
+    console.error("Pinterest:", error);
+    await sock.sendMessage(jid, {
+      text: "No pude obtener ese contenido. Inténtalo con otro Pin."
+    });
+  }
 }
