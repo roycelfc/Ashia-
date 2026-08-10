@@ -3,9 +3,11 @@ import makeWASocket, {
   useMultiFileAuthState
 } from "@whiskeysockets/baileys";
 import pino from "pino";
-import qrcode from "qrcode-terminal";
 import { handleMessage } from "./handlers/messageHandler.js";
 const AUTH_FOLDER = "./auth";
+// Número de WhatsApp de Ashia.
+// Cuba: +53
+const PHONE_NUMBER = "5354671816";
 async function startAshia() {
   console.log("✦ Iniciando Ashia...");
   const { state, saveCreds } =
@@ -16,20 +18,52 @@ async function startAshia() {
     printQRInTerminal: false
   });
   sock.ev.on("creds.update", saveCreds);
-  sock.ev.on("connection.update", (update) => {
+  let pairingRequested = false;
+  sock.ev.on("connection.update", async (update) => {
     const {
       connection,
-      lastDisconnect,
-      qr
+      lastDisconnect
     } = update;
-    if (qr) {
-      console.log("\n✦ Escanea el código QR:\n");
-      qrcode.generate(qr, {
-        small: true
-      });
+    // Solicitar código de vinculación
+    // solamente si todavía no existe una sesión registrada.
+    if (
+      connection === "connecting" &&
+      !state.creds.registered &&
+      !pairingRequested
+    ) {
+      pairingRequested = true;
+      try {
+        // Esperamos un poco para que la conexión esté preparada.
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1500)
+        );
+        const code =
+          await sock.requestPairingCode(
+            PHONE_NUMBER
+          );
+        console.log("\n✦ CÓDIGO DE VINCULACIÓN:\n");
+        console.log(code);
+        console.log(
+          "\n✦ En WhatsApp ve a Dispositivos vinculados."
+        );
+        console.log(
+          "✦ Elige 'Vincular dispositivo con número de teléfono'."
+        );
+        console.log(
+          "✦ Introduce el código mostrado arriba.\n"
+        );
+      } catch (error) {
+        console.error(
+          "✦ Error obteniendo código de vinculación:",
+          error
+        );
+        pairingRequested = false;
+      }
     }
     if (connection === "open") {
-      console.log("\n✦ Ashia está conectada.\n");
+      console.log(
+        "\n✦ Ashia está conectada.\n"
+      );
     }
     if (connection === "close") {
       const statusCode =
@@ -41,7 +75,9 @@ async function startAshia() {
         console.log("✦ Reconectando...");
         startAshia();
       } else {
-        console.log("✦ La sesión fue cerrada.");
+        console.log(
+          "✦ La sesión fue cerrada."
+        );
       }
     }
   });
@@ -49,11 +85,17 @@ async function startAshia() {
     "messages.upsert",
     async ({ messages }) => {
       for (const message of messages) {
-        await handleMessage(sock, message);
+        await handleMessage(
+          sock,
+          message
+        );
       }
     }
   );
 }
 startAshia().catch((error) => {
-  console.error("✦ Error crítico:", error);
+  console.error(
+    "✦ Error crítico:",
+    error
+  );
 });
