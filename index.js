@@ -3,9 +3,9 @@ import makeWASocket, {
   useMultiFileAuthState
 } from "@whiskeysockets/baileys";
 import pino from "pino";
+import qrcode from "qrcode-terminal";
 import { handleMessage } from "./handlers/messageHandler.js";
 const AUTH_FOLDER = "./auth";
-const PHONE_NUMBER = "5354671816";
 async function startAshia() {
   console.log("✦ Iniciando Ashia...");
   const { state, saveCreds } =
@@ -16,32 +16,17 @@ async function startAshia() {
     printQRInTerminal: false
   });
   sock.ev.on("creds.update", saveCreds);
-  let pairingCodeRequested = false;
-  sock.ev.on("connection.update", async (update) => {
+  sock.ev.on("connection.update", (update) => {
     const {
       connection,
-      lastDisconnect
+      lastDisconnect,
+      qr
     } = update;
-    if (
-      !pairingCodeRequested &&
-      !state.creds.registered
-    ) {
-      pairingCodeRequested = true;
-      try {
-        const code =
-          await sock.requestPairingCode(PHONE_NUMBER);
-        console.log("\n✦ CÓDIGO DE VINCULACIÓN:");
-        console.log(`✦ ${code}`);
-        console.log(
-          "✦ WhatsApp → Dispositivos vinculados → Vincular con número de teléfono\n"
-        );
-      } catch (error) {
-        pairingCodeRequested = false;
-        console.error(
-          "✦ Error obteniendo código de vinculación:",
-          error
-        );
-      }
+    if (qr) {
+      console.log("\n✦ Escanea el código QR:\n");
+      qrcode.generate(qr, {
+        small: true
+      });
     }
     if (connection === "open") {
       console.log("\n✦ Ashia está conectada.\n");
