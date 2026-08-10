@@ -3,7 +3,7 @@ import makeWASocket, {
   useMultiFileAuthState
 } from "@whiskeysockets/baileys";
 import pino from "pino";
-import qrcode from "qrcode-terminal";
+import QRCode from "qrcode";
 import { handleMessage } from "./handlers/messageHandler.js";
 const AUTH_FOLDER = "./auth";
 async function startAshia() {
@@ -16,17 +16,20 @@ async function startAshia() {
     printQRInTerminal: false
   });
   sock.ev.on("creds.update", saveCreds);
-  sock.ev.on("connection.update", (update) => {
+  sock.ev.on("connection.update", async (update) => {
     const {
       connection,
       lastDisconnect,
       qr
     } = update;
     if (qr) {
-      console.log("\n✦ Escanea el código QR:\n");
-      qrcode.generate(qr, {
-        small: true
-      });
+      try {
+        await QRCode.toFile("./qr.png", qr);
+        console.log("\n✦ QR generado correctamente.");
+        console.log("✦ Archivo: qr.png\n");
+      } catch (error) {
+        console.error("✦ Error generando el QR:", error);
+      }
     }
     if (connection === "open") {
       console.log("\n✦ Ashia está conectada.\n");
@@ -41,9 +44,7 @@ async function startAshia() {
         console.log("✦ Reconectando...");
         startAshia();
       } else {
-        console.log(
-          "✦ La sesión fue cerrada."
-        );
+        console.log("✦ La sesión fue cerrada.");
       }
     }
   });
@@ -57,8 +58,5 @@ async function startAshia() {
   );
 }
 startAshia().catch((error) => {
-  console.error(
-    "✦ Error crítico:",
-    error
-  );
+  console.error("✦ Error crítico:", error);
 });
