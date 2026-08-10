@@ -1,41 +1,40 @@
+import { menu } from "./menu.js";
+import { ping } from "./ping.js";
+import { perfil } from "./perfil.js";
+import { reputacion } from "./reputacion.js";
+import { pareja } from "./pareja.js";
+import { cita } from "./cita.js";
+import { besar } from "./besar.js";
+import { abrazo } from "./abrazo.js";
+import { pinterest } from "./pinterest.js";
 const commands = {
-  menu: "../commands/menu.js",
-  ping: "../commands/ping.js",
-  perfil: "../commands/perfil.js",
-  reputacion: "../commands/reputacion.js",
-  pareja: "../commands/pareja.js",
-  cita: "../commands/cita.js",
-  besar: "../commands/besar.js",
-  abrazo: "../commands/abrazo.js",
-  pinterest: "../commands/pinterest.js"
+  menu,
+  ping,
+  perfil,
+  reputacion,
+  rep: reputacion,
+  pareja,
+  cita,
+  besar,
+  abrazo,
+  pinterest
 };
-
 export async function handleCommand(sock, message, text) {
   const parts = text.trim().split(/\s+/);
-  const commandName = parts[0].toLowerCase().replace("/", "");
+  const commandName = parts[0]
+    .toLowerCase()
+    .replace(/^\//, "");
   const args = parts.slice(1);
-
-  if (!commands[commandName]) {
+  const command = commands[commandName];
+  if (!command) {
     return;
   }
-
   try {
-    const module = await import(commands[commandName]);
-
-    if (typeof module.default === "function") {
-      await module.default(sock, message, args);
-      return;
-    }
-
-    if (typeof module.execute === "function") {
-      await module.execute(sock, message, args);
-      return;
-    }
-
-    if (typeof module[commandName] === "function") {
-      await module[commandName](sock, message, args);
-    }
+    await command(sock, message, args);
   } catch (error) {
     console.error(`✦ Error en /${commandName}:`, error);
+    await sock.sendMessage(message.key.remoteJid, {
+      text: "✦ Ocurrió un error al ejecutar ese comando."
+    });
   }
 }
