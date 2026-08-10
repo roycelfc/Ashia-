@@ -20,6 +20,7 @@
     "@whiskeysockets/baileys": "latest",
     "pino": "latest",
     "qrcode-terminal": "latest",
-    "qrcode": "latest"
+    "qrcode": "latest",
+    "express": "latest"
   }
 }
