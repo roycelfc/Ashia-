@@ -3,84 +3,96 @@ import makeWASocket, {
   useMultiFileAuthState
 } from "@whiskeysockets/baileys";
 import pino from "pino";
+import qrcode from "qrcode-terminal";
+import QRCode from "qrcode";
+import fs from "fs";
+import path from "path";
 import { handleMessage } from "./handlers/messageHandler.js";
 const AUTH_FOLDER = "./auth";
-// Número de WhatsApp de Ashia.
-// Cuba: +53
-const PHONE_NUMBER = "5354671816";
+const QR_FOLDER = path.join(process.cwd(), "Code QR");
+const QR_FILE = path.join(QR_FOLDER, "ashia-qr.png");
+async function saveQR(qr) {
+  try {
+    if (!fs.existsSync(QR_FOLDER)) {
+      fs.mkdirSync(QR_FOLDER, {
+        recursive: true
+      });
+    }
+    await QRCode.toFile(QR_FILE, qr, {
+      width: 300,
+      margin: 4,
+      type: "png"
+    });
+    console.log("✦ QR creado como imagen:");
+    console.log(QR_FILE);
+  } catch (error) {
+    console.error(
+      "✦ Error creando la imagen QR:",
+      error
+    );
+  }
+}
 async function startAshia() {
   console.log("✦ Iniciando Ashia...");
   const { state, saveCreds } =
     await useMultiFileAuthState(AUTH_FOLDER);
   const sock = makeWASocket({
     auth: state,
-    logger: pino({ level: "silent" }),
+    logger: pino({
+      level: "silent"
+    }),
     printQRInTerminal: false
   });
-  sock.ev.on("creds.update", saveCreds);
-  let pairingRequested = false;
-  sock.ev.on("connection.update", async (update) => {
-    const {
-      connection,
-      lastDisconnect
-    } = update;
-    // Solicitar código de vinculación
-    // solamente si todavía no existe una sesión registrada.
-    if (
-      connection === "connecting" &&
-      !state.creds.registered &&
-      !pairingRequested
-    ) {
-      pairingRequested = true;
-      try {
-        // Esperamos un poco para que la conexión esté preparada.
-        await new Promise((resolve) =>
-          setTimeout(resolve, 1500)
+  sock.ev.on(
+    "creds.update",
+    saveCreds
+  );
+  sock.ev.on(
+    "connection.update",
+    async (update) => {
+      const {
+        connection,
+        lastDisconnect,
+        qr
+      } = update;
+      if (qr) {
+        console.log(
+          "\n✦ Nuevo código QR:\n"
         );
-        const code =
-          await sock.requestPairingCode(
-            PHONE_NUMBER
+        // Mantiene el QR en la terminal
+        qrcode.generate(qr, {
+          small: true
+        });
+        // Guarda el mismo QR como imagen
+        await saveQR(qr);
+      }
+      if (connection === "open") {
+        console.log(
+          "\n✦ Ashia está conectada.\n"
+        );
+      }
+      if (connection === "close") {
+        const statusCode =
+          lastDisconnect?.error?.output?.statusCode;
+        const shouldReconnect =
+          statusCode !==
+          DisconnectReason.loggedOut;
+        console.log(
+          "✦ Conexión cerrada."
+        );
+        if (shouldReconnect) {
+          console.log(
+            "✦ Reconectando..."
           );
-        console.log("\n✦ CÓDIGO DE VINCULACIÓN:\n");
-        console.log(code);
-        console.log(
-          "\n✦ En WhatsApp ve a Dispositivos vinculados."
-        );
-        console.log(
-          "✦ Elige 'Vincular dispositivo con número de teléfono'."
-        );
-        console.log(
-          "✦ Introduce el código mostrado arriba.\n"
-        );
-      } catch (error) {
-        console.error(
-          "✦ Error obteniendo código de vinculación:",
-          error
-        );
-        pairingRequested = false;
+          startAshia();
+        } else {
+          console.log(
+            "✦ La sesión fue cerrada."
+          );
+        }
       }
     }
-    if (connection === "open") {
-      console.log(
-        "\n✦ Ashia está conectada.\n"
-      );
-    }
-    if (connection === "close") {
-      const statusCode =
-        lastDisconnect?.error?.output?.statusCode;
-      const shouldReconnect =
-        statusCode !== DisconnectReason.loggedOut;
-      console.log("✦ Conexión cerrada.");
-      if (shouldReconnect) {
-        console.log("✦ Reconectando...");
-        startAshia();
-      } else {
-        console.log(
-          "✦ La sesión fue cerrada."
-        );
-      }
-    }
-  });
+  );
   sock.ev.on(
     "messages.upsert",
     async ({ messages }) => {
