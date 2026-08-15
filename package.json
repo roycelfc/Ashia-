@@ -1,0 +1,17 @@
+{
+  "name": "ashia-assistant",
+  "version": "1.0.0",
+  "description": "Ashia ✦ — asistente virtual para grupos de Telegram",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {},
+  "keywords": [
+    "telegram",
+    "bot",
+    "ashia",
+    "assistant"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {}
+}
