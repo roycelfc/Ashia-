@@ -17,7 +17,7 @@ export async function handleMessage(update, env) {
 }
 
 async function sendMessage(token, chatId, text) {
-  await fetch(
+  const response = await fetch(
     `https://api.telegram.org/bot${token}/sendMessage`,
     {
       method: "POST",
@@ -30,4 +30,10 @@ async function sendMessage(token, chatId, text) {
       })
     }
   );
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error("Telegram API:", error);
+    throw new Error(error);
+  }
 }
