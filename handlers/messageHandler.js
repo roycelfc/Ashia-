@@ -1,21 +1,3 @@
-export async function handleMessage(update, env) {
-  if (!update?.message?.text) {
-    return;
-  }
-
-  const message = update.message;
-  const chatId = message.chat.id;
-  const text = message.text.trim();
-
-  if (text === "/ping") {
-    await sendMessage(
-      env.TELEGRAM_BOT_TOKEN,
-      chatId,
-      "✦ Pong. Ashia está viva."
-    );
-  }
-}
-
 async function sendMessage(token, chatId, text) {
   const response = await fetch(
     `https://api.telegram.org/bot${token}/sendMessage`,
@@ -31,9 +13,11 @@ async function sendMessage(token, chatId, text) {
     }
   );
 
+  const result = await response.text();
+
+  console.log("Telegram:", result);
+
   if (!response.ok) {
-    const error = await response.text();
-    console.error("Telegram API:", error);
-    throw new Error(error);
+    throw new Error(result);
   }
 }
