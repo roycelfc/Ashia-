@@ -1,19 +1,39 @@
-import { handleMessage } from "./handlers/messageHandler.js";
-
-export default {
-  async fetch(request, env) {
-    if (request.method === "POST") {
-      try {
-        const update = await request.json();
-        await handleMessage(update, env);
-
-        return new Response("OK");
-      } catch (error) {
-        console.error(error);
-        return new Response("Error", { status: 500 });
-      }
-    }
-
-    return new Response("Ashia ✦ está funcionando.");
+export async function handleMessage(update, env) {
+  if (!update?.message?.text) {
+    return;
   }
-};
+
+  const message = update.message;
+  const chatId = message.chat.id;
+  const text = message.text.trim();
+
+  if (text === "/ping") {
+    await sendMessage(
+      env.TELEGRAM_BOT_TOKEN,
+      chatId,
+      "✦ Pong. Ashia está viva."
+    );
+  }
+}
+
+async function sendMessage(token, chatId, text) {
+  const response = await fetch(
+    `https://api.telegram.org/bot${token}/sendMessage`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text
+      })
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error("Telegram API:", error);
+    throw new Error(error);
+  }
+}
